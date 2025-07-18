@@ -1,6 +1,9 @@
 # rnbo-build
 
-Build a native version of Cycling '74 RNBO runner packages from scratch.
+Build a native version of Cycling '74 RNBO runner packages from scratch:
+- https://github.com/Cycling74/rnbo.oscquery.runner
+- https://github.com/Cycling74/rnbo-runner-panel
+- https://github.com/x37v/jack_transport_link
 
 ## Notes
 
@@ -37,16 +40,16 @@ You can customize the versions being built with:
 
 ```Dockerfile
 # rnbo-runner-panel git tag to build
-ARG RNBO_RUNNER_PANEL_TAG=v2.1.0
+ARG RNBO_RUNNER_PANEL_TAG=v2.1.1
 # RNBO source version
-ARG RNBO_SOURCE_VER=1.3.4
+ARG RNBO_SOURCE_VER=1.4.1
 # rnbo.oscquery.runner git tag to build
 ARG RNBO_RUNNER_TAG=rnbo_v${RNBO_SOURCE_VER}
 ```
 
 ## Examples
 
-### RPi4 (ARMv8 64-bit) using RNBO beta 1.4.0  
+### RPi4 (ARMv8 64-bit) using RNBO beta 1.4.0
 
 ```sh
 docker build \

@@ -55,7 +55,7 @@ FROM base AS rnbo-runner-panel
 WORKDIR /build
 
 # rnbo-runner-panel git tag to build
-ENV RNBO_RUNNER_PANEL_TAG=v2.1.0
+ENV RNBO_RUNNER_PANEL_TAG=v2.1.1
 
 # Fetch the source
 RUN git clone --depth 1 --branch ${RNBO_RUNNER_PANEL_TAG} \
@@ -72,7 +72,7 @@ WORKDIR /build
 VOLUME /root/.conan/data  
 
 # RNBO source version
-ARG RNBO_SOURCE_VER=1.3.4
+ARG RNBO_SOURCE_VER=1.4.1
 
 # rnbo.oscquery.runner git tag to build
 ARG RNBO_RUNNER_TAG=rnbo_v${RNBO_SOURCE_VER}
