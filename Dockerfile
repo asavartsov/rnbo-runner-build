@@ -1,7 +1,7 @@
 #
-# Base Debian 12 + Node.js 20 image
+# Base Debian 12 + Node.js 22 image
 #
-FROM node:20-bookworm-slim AS base
+FROM node:22-bookworm-slim AS base
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV FAKECHROOT=true
@@ -36,7 +36,7 @@ RUN <<EOF
 
   # Install build tools and libraries
   apt-get -y --no-install-recommends install \
-      ca-certificates make git \
+      ca-certificates curl make git \
       gcc g++ cmake gettext-base python3-pip \
       crossbuild-essential-${ARCH} \
       libavahi-compat-libdnssd-dev:${ARCH} \
@@ -52,27 +52,47 @@ EOF
 #
 FROM base AS rnbo-runner-panel
 
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Add Rust targets
+RUN rustup target add aarch64-unknown-linux-gnu armv7-unknown-linux-gnueabihf
+
+# Configure Cargo linkers
+RUN mkdir -p /root/.cargo && \
+    printf '[target.aarch64-unknown-linux-gnu]\nlinker = "aarch64-linux-gnu-gcc"\n\n[target.armv7-unknown-linux-gnueabihf]\nlinker = "arm-linux-gnueabihf-gcc"\n' > /root/.cargo/config.toml
+
+# Bypass cross with cargo
+RUN printf '#!/bin/sh\nexec cargo "$@"\n' > /usr/local/bin/cross && chmod +x /usr/local/bin/cross
+
 WORKDIR /build
 
 # rnbo-runner-panel git tag to build
-ENV RNBO_RUNNER_PANEL_TAG=v2.1.1
+ENV RNBO_RUNNER_PANEL_TAG=v2.3.1
 
 # Fetch the source
 RUN git clone --depth 1 --branch ${RNBO_RUNNER_PANEL_TAG} \
-    https://github.com/Cycling74/rnbo-runner-panel.git .
+     https://github.com/Cycling74/rnbo-runner-panel.git .
 
 # Install dependencies and build deb package
-RUN npm ci && npm run package-debian
-
+RUN npm ci && \
+    if [ "$ARCH" = "arm64" ]; then \
+      npm run package:debian-aarch64; \
+    elif [ "$ARCH" = "armhf" ]; then \
+      npm run package:debian-armv7; \
+    else \
+      echo "Unsupported architecture" && exit 1; \
+    fi
 #
 # RNBO OSCQuery Runner
 #
 FROM base AS rnbo-runner
 WORKDIR /build
-VOLUME /root/.conan/data  
+VOLUME /root/.conan/data
 
 # RNBO source version
-ARG RNBO_SOURCE_VER=1.4.1
+ARG RNBO_SOURCE_VER=1.4.3
 
 # rnbo.oscquery.runner git tag to build
 ARG RNBO_RUNNER_TAG=rnbo_v${RNBO_SOURCE_VER}
@@ -96,7 +116,7 @@ EOF
 # Example: RNBO_RUNNER_PANEL_TAG=v2.1.1-beta.4 RNBO_RUNNER_TAG=develop RNBO_SOURCE_VER=1.4.0-dev.117
 #
 # Looks like Cycling '74 publishes all this stuff under MIT <3 but it is always good to check LICENSE/copyright/terms
-# to confirm if it's allowed to use a specific version. You can always get RNBO sources from Max and ADD 
+# to confirm if it's allowed to use a specific version. You can always get RNBO sources from Max and ADD
 # them to /opt/usr/src/rnbo instead of the steps below.
 RUN sed -E 's/^\s*(deb.*bookworm).*/\1 beta/g' config/cycling74.list > /etc/apt/sources.list.d/cycling74-beta.list
 
@@ -110,10 +130,10 @@ EOF
 
 # Create Conan profile from the template
 #
-# To avoid dealing with toolchains, let's just set compiler and tool values to the environment 
+# To avoid dealing with toolchains, let's just set compiler and tool values to the environment
 # variables and put the exact same values in the Conan profile.
 #
-# Target architecture libraries are installed from the regular Debian repository at the 
+# Target architecture libraries are installed from the regular Debian repository at the
 # usual location by adding the architecture to dpkg during the previous stage.
 RUN mkdir -p /root/.conan/profiles
 RUN CHOST=$CHOST CC=$CC CXX=$CXX CPU=$CPU envsubst <<EOF > /root/.conan/profiles/default
@@ -161,5 +181,5 @@ RUN cmake --build . && cpack
 FROM scratch
 
 COPY --from=rnbo-runner /build/*.deb /
-COPY --from=rnbo-runner-panel /build/*.deb /
+COPY --from=rnbo-runner-panel /build/**/*.deb /
 COPY --from=jack-transport-link /build/*.deb /
