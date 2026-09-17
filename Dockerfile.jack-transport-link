@@ -1,0 +1,70 @@
+#
+# Build the JACK Transport Link Debian package.
+#
+FROM node:22-bookworm-slim AS build
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV FAKECHROOT=true
+VOLUME /var/cache/apt/packages
+
+# Cross-compilation options
+# CPU for CMake and arch for Conan
+ARG CPU=armv8
+# CPU flags for compiler
+ARG MCPU=-mcpu=cortex-a76
+# Debian package architecture
+ARG ARCH=arm64
+# Toolchain prefix
+ARG CHOST=aarch64-linux-gnu
+
+# Toolchain
+ENV AR=${CHOST}-ar
+ENV AS=${CHOST}-as
+ENV RANLIB=${CHOST}-ranlib
+ENV CC=${CHOST}-gcc
+ENV CXX=${CHOST}-g++
+ENV STRIP=${CHOST}-strip
+ENV RC=${CHOST}-windres
+ENV CFLAGS="${MCPU} -O3"
+ENV CXXFLAGS=${CFLAGS}
+ENV ASFLAGS=${CFLAGS}
+
+# Packages
+RUN <<EOF
+  # Add target architecture for library dependencies
+  dpkg --add-architecture ${ARCH} && apt-get update
+
+  # Install build tools and libraries
+  apt-get -y --no-install-recommends install \
+      ca-certificates curl make git \
+      gcc g++ cmake gettext-base python3-pip \
+      crossbuild-essential-${ARCH} \
+      libavahi-compat-libdnssd-dev:${ARCH} \
+      libssl-dev:${ARCH} libjack-jackd2-dev:${ARCH} \
+      libxml2-dev:${ARCH} libsndfile1-dev:${ARCH}
+
+  # Runner requires Conan 1.61
+  pip3 install conan --break-system-packages conan==1.61.0
+EOF
+
+WORKDIR /build
+
+ARG JACK_TRANSPORT_LINK_REF=v0.0.13
+
+RUN <<EOF
+  git init .
+  git remote add origin https://github.com/x37v/jack_transport_link.git
+  git fetch --depth 1 origin "${JACK_TRANSPORT_LINK_REF}"
+  git checkout --detach FETCH_HEAD
+  git submodule update --init --recursive
+EOF
+
+RUN cmake \
+      -DCMAKE_SYSTEM_PROCESSOR=${CPU} -DCPACK_DEBIAN_PACKAGE_ARCHITECTURE=${ARCH} \
+      -DCMAKE_BUILD_TYPE=Release .
+
+RUN cmake --build . && cpack
+
+FROM scratch
+
+COPY --from=build /build/*.deb /
