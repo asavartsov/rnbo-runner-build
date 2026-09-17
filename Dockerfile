@@ -68,15 +68,23 @@ RUN printf '#!/bin/sh\nexec cargo "$@"\n' > /usr/local/bin/cross && chmod +x /us
 
 WORKDIR /build
 
-# rnbo-runner-panel git tag to build
-ENV RNBO_RUNNER_PANEL_TAG=v2.3.1
+# rnbo-runner-panel tag, branch, or commit to build
+ARG RNBO_RUNNER_PANEL_REF=v2.4.1
+
+# Optional package version override for builds from an unreleased commit
+ARG RNBO_RUNNER_PANEL_PACKAGE_VERSION=
 
 # Fetch the source
-RUN git clone --depth 1 --branch ${RNBO_RUNNER_PANEL_TAG} \
-     https://github.com/Cycling74/rnbo-runner-panel.git .
+RUN git init . && \
+    git remote add origin https://github.com/Cycling74/rnbo-runner-panel.git && \
+    git fetch --depth 1 origin "${RNBO_RUNNER_PANEL_REF}" && \
+    git checkout --detach FETCH_HEAD
 
 # Install dependencies and build deb package
-RUN npm ci && \
+RUN if [ -n "${RNBO_RUNNER_PANEL_PACKAGE_VERSION}" ]; then \
+      export PKG_VERSION="${RNBO_RUNNER_PANEL_PACKAGE_VERSION}"; \
+    fi && \
+    npm ci && \
     if [ "$ARCH" = "arm64" ]; then \
       npm run package:debian-aarch64; \
     elif [ "$ARCH" = "armhf" ]; then \
@@ -92,14 +100,16 @@ WORKDIR /build
 VOLUME /root/.conan/data
 
 # RNBO source version
-ARG RNBO_SOURCE_VER=1.4.3
+ARG RNBO_SOURCE_VER=1.4.5
 
-# rnbo.oscquery.runner git tag to build
-ARG RNBO_RUNNER_TAG=rnbo_v${RNBO_SOURCE_VER}
+# rnbo.oscquery.runner tag, branch, or commit to build
+ARG RNBO_RUNNER_REF=v1.4.5-10
 
 # Fetch sources
-RUN git clone --depth 1 --branch ${RNBO_RUNNER_TAG} \
-    https://github.com/Cycling74/rnbo.oscquery.runner.git .
+RUN git init . && \
+    git remote add origin https://github.com/Cycling74/rnbo.oscquery.runner.git && \
+    git fetch --depth 1 origin "${RNBO_RUNNER_REF}" && \
+    git checkout --detach FETCH_HEAD
 
 # Add Cycling '74's repository to fetch RNBO sources
 RUN <<EOF
@@ -113,7 +123,7 @@ EOF
 #
 # Package version will be set to RNBO version, and it needs to be compatible with the runner panel package.
 #
-# Example: RNBO_RUNNER_PANEL_TAG=v2.1.1-beta.4 RNBO_RUNNER_TAG=develop RNBO_SOURCE_VER=1.4.0-dev.117
+# Example: RNBO_RUNNER_PANEL_REF=v2.1.1-beta.4 RNBO_RUNNER_REF=develop RNBO_SOURCE_VER=1.4.0-dev.117
 #
 # Looks like Cycling '74 publishes all this stuff under MIT <3 but it is always good to check LICENSE/copyright/terms
 # to confirm if it's allowed to use a specific version. You can always get RNBO sources from Max and ADD
@@ -166,8 +176,13 @@ RUN cmake --build . && cpack
 FROM base AS jack-transport-link
 WORKDIR /build
 
+ARG JACK_TRANSPORT_LINK_REF=v0.0.13
+
 RUN <<EOF
-  git clone --depth=1 --branch main https://github.com/x37v/jack_transport_link.git .
+  git init .
+  git remote add origin https://github.com/x37v/jack_transport_link.git
+  git fetch --depth 1 origin "${JACK_TRANSPORT_LINK_REF}"
+  git checkout --detach FETCH_HEAD
   git submodule update --init --recursive
 EOF
 

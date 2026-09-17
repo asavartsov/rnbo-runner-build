@@ -39,12 +39,26 @@ ARG CHOST=aarch64-linux-gnu
 You can customize the versions being built with:  
 
 ```Dockerfile
-# rnbo-runner-panel git tag to build
-ARG RNBO_RUNNER_PANEL_TAG=v2.1.1
+# rnbo-runner-panel git tag, branch, or commit to build
+ARG RNBO_RUNNER_PANEL_REF=v2.4.1
+# Optional package version for an unreleased panel ref
+ARG RNBO_RUNNER_PANEL_PACKAGE_VERSION=
 # RNBO source version
-ARG RNBO_SOURCE_VER=1.4.1
-# rnbo.oscquery.runner git tag to build
-ARG RNBO_RUNNER_TAG=rnbo_v${RNBO_SOURCE_VER}
+ARG RNBO_SOURCE_VER=1.4.5
+# rnbo.oscquery.runner git tag, branch, or commit to build
+ARG RNBO_RUNNER_REF=v1.4.5-9
+# jack_transport_link git tag, branch, or commit to build
+ARG JACK_TRANSPORT_LINK_REF=v0.0.13
+```
+
+```sh
+docker build \
+    --build-arg RNBO_SOURCE_VER=1.4.5 \
+    --build-arg RNBO_RUNNER_REF=v1.4.5-11-beta1 \
+    --build-arg RNBO_RUNNER_PANEL_REF=2a469e4eb83461efa5af837d2f5476d8ec0f7211 \
+    --build-arg RNBO_RUNNER_PANEL_PACKAGE_VERSION=2.4.2-linkaudio.20260914 \
+    --build-arg JACK_TRANSPORT_LINK_REF=v0.0.14-linkaudioosc.3 \
+    . --output .
 ```
 
 ## Examples
@@ -54,9 +68,9 @@ ARG RNBO_RUNNER_TAG=rnbo_v${RNBO_SOURCE_VER}
 ```sh
 docker build \
     --build-arg MCPU="-mcpu=cortex-a72" \
-    --build-arg RNBO_RUNNER_PANEL_TAG=develop \
+    --build-arg RNBO_RUNNER_PANEL_REF=develop \
     --build-arg RNBO_SOURCE_VER=1.4.0-dev.117 \
-    --build-arg RNBO_RUNNER_TAG=develop \
+    --build-arg RNBO_RUNNER_REF=develop \
     . --output .
 ```
 
