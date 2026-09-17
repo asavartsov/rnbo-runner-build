@@ -90,4 +90,4 @@ RUN if [ -n "${RNBO_RUNNER_PANEL_PACKAGE_VERSION}" ]; then \
 
 FROM scratch
 
-COPY --from=build /build/*.deb /
+COPY --from=build /build/build/*.deb /

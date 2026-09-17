@@ -196,5 +196,5 @@ RUN cmake --build . && cpack
 FROM scratch
 
 COPY --from=rnbo-runner /build/*.deb /
-COPY --from=rnbo-runner-panel /build/*.deb /
+COPY --from=rnbo-runner-panel /build/build/*.deb /
 COPY --from=jack-transport-link /build/*.deb /
